@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const MyApp());
@@ -199,11 +200,40 @@ class ScrumPokerPage extends StatefulWidget {
 class _ScrumPokerPageState extends State<ScrumPokerPage> {
   final List<int> cardValues = [1, 2, 3, 5, 8];
   List<UserVote> userVotes = [
-    UserVote(name: 'John', selectedValue: 2),
-    UserVote(name: 'Alice', selectedValue: 5),
-    UserVote(name: 'Bob', selectedValue: 1),
+    UserVote(name: 'John', selectedValue: 0),
+    UserVote(name: 'Alice', selectedValue: 0),
+    UserVote(name: 'Bob', selectedValue: 0),
   ];
   bool _areEstimatesRevealed = false;
+
+  Future<void> _launchTicketUrl() async {
+    final Uri url = Uri.parse('https://www.google.com');
+    try {
+      if (!await launchUrl(
+        url,
+        mode: LaunchMode.platformDefault,
+        webOnlyWindowName: '_blank',
+      )) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not open the ticket'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open the ticket'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -253,43 +283,90 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: InkWell(
+                onTap: _launchTicketUrl,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.link, size: 16, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text(
+                        'CDL-19834',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             SizedBox(
               height: 150,
               child: Center(
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: cardValues.length,
-                  shrinkWrap: true,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: InkWell(
-                        onTap: () {
-                          _handleCardSelection(cardValues[index]);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Selected card: ${cardValues[index]}',
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Calculate card width based on available width
+                    final cardWidth =
+                        (constraints.maxWidth - (cardValues.length + 1) * 8) /
+                        cardValues.length;
+                    final cardHeight = cardWidth * 1.5; // maintain aspect ratio
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(
+                        cardValues.length,
+                        (index) => InkWell(
+                          onTap: () {
+                            _handleCardSelection(cardValues[index]);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Selected card: ${cardValues[index]}',
+                                ),
+                                duration: const Duration(seconds: 1),
                               ),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                        child: Card(
-                          elevation: 4,
-                          child: Container(
-                            width: 100,
-                            height: 150,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue, width: 2),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${cardValues[index]}',
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
+                            );
+                          },
+                          child: Card(
+                            elevation: 4,
+                            child: Container(
+                              width: cardWidth,
+                              height: cardHeight,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.blue,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Center(
+                                child: FittedBox(
+                                  fit: BoxFit.contain,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      '${cardValues[index]}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -347,17 +424,23 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
                       widget.isAdmin
                           ? _areEstimatesRevealed
                           : vote.name == widget.currentUser;
+                  final bool hasVoted = vote.selectedValue > 0;
+
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     child: ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.person)),
+                      leading: CircleAvatar(
+                        backgroundColor: hasVoted ? Colors.blue : Colors.red,
+                        child: const Icon(Icons.person, color: Colors.white),
+                      ),
                       title: Text(vote.name),
-                      trailing: Container(
+                      trailing: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
                         width: 40,
                         height: 40,
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.blue,
+                          color: hasVoted ? Colors.blue : Colors.red,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child:
