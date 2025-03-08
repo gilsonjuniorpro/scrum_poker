@@ -41,24 +41,46 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Simulate a small delay for login
       Future.delayed(const Duration(seconds: 1), () {
-        if (_usernameController.text == 'eivan' &&
-            _passwordController.text == '12345') {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const ScrumPokerPage()),
-          );
+        final username = _usernameController.text;
+        final password = _passwordController.text;
+
+        if (password == '12345') {
+          if (username == 'eivan') {
+            // Admin login
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => const ScrumPokerPage(isAdmin: true),
+              ),
+            );
+          } else if (username == 'usuario') {
+            // User login
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder:
+                    (context) =>
+                        ScrumPokerPage(isAdmin: false, currentUser: username),
+              ),
+            );
+          } else {
+            _showError();
+          }
         } else {
-          setState(() {
-            _isLoading = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Invalid username or password'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          _showError();
         }
       });
     }
+  }
+
+  void _showError() {
+    setState(() {
+      _isLoading = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Invalid username or password'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override
@@ -165,7 +187,10 @@ class _LoginScreenState extends State<LoginScreen> {
 }
 
 class ScrumPokerPage extends StatefulWidget {
-  const ScrumPokerPage({super.key});
+  final bool isAdmin;
+  final String? currentUser;
+
+  const ScrumPokerPage({super.key, required this.isAdmin, this.currentUser});
 
   @override
   State<ScrumPokerPage> createState() => _ScrumPokerPageState();
@@ -173,7 +198,7 @@ class ScrumPokerPage extends StatefulWidget {
 
 class _ScrumPokerPageState extends State<ScrumPokerPage> {
   final List<int> cardValues = [1, 2, 3, 5, 8];
-  final List<UserVote> userVotes = [
+  List<UserVote> userVotes = [
     UserVote(name: 'John', selectedValue: 2),
     UserVote(name: 'Alice', selectedValue: 5),
     UserVote(name: 'Bob', selectedValue: 1),
@@ -181,11 +206,47 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
   bool _areEstimatesRevealed = false;
 
   @override
+  void initState() {
+    super.initState();
+    if (!widget.isAdmin && widget.currentUser != null) {
+      // Add current user to the votes list if not already present
+      if (!userVotes.any((vote) => vote.name == widget.currentUser)) {
+        userVotes.add(UserVote(name: widget.currentUser!, selectedValue: 0));
+      }
+    }
+  }
+
+  void _handleCardSelection(int value) {
+    if (!widget.isAdmin && widget.currentUser != null) {
+      setState(() {
+        final userIndex = userVotes.indexWhere(
+          (vote) => vote.name == widget.currentUser,
+        );
+        if (userIndex != -1) {
+          // Update existing user's vote
+          userVotes[userIndex] = UserVote(
+            name: widget.currentUser!,
+            selectedValue: value,
+          );
+        } else {
+          // Add new user vote
+          userVotes.add(
+            UserVote(name: widget.currentUser!, selectedValue: value),
+          );
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
-        title: const Text('Scrum Poker', style: TextStyle(color: Colors.white)),
+        title: Text(
+          widget.isAdmin ? 'Scrum Poker (Admin)' : 'Scrum Poker',
+          style: const TextStyle(color: Colors.white),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -204,7 +265,7 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
                       padding: const EdgeInsets.all(8.0),
                       child: InkWell(
                         onTap: () {
-                          debugPrint('Card ${cardValues[index]} was selected!');
+                          _handleCardSelection(cardValues[index]);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -241,33 +302,37 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
               ),
             ),
             const SizedBox(height: 32),
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _areEstimatesRevealed = !_areEstimatesRevealed;
-                  });
-                },
-                icon: Icon(
-                  _areEstimatesRevealed
-                      ? Icons.visibility_off
-                      : Icons.visibility,
-                  color: Colors.white,
-                ),
-                label: Text(
-                  _areEstimatesRevealed ? 'Hide Estimates' : 'Reveal Estimates',
-                  style: const TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+            if (widget.isAdmin) ...[
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _areEstimatesRevealed = !_areEstimatesRevealed;
+                    });
+                  },
+                  icon: Icon(
+                    _areEstimatesRevealed
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    _areEstimatesRevealed
+                        ? 'Hide Estimates'
+                        : 'Reveal Estimates',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
+            ],
             const Text(
               'User Votes:',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -278,6 +343,10 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
                 itemCount: userVotes.length,
                 itemBuilder: (context, index) {
                   final vote = userVotes[index];
+                  final bool showValue =
+                      widget.isAdmin
+                          ? _areEstimatesRevealed
+                          : vote.name == widget.currentUser;
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     child: ListTile(
@@ -292,7 +361,7 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child:
-                            _areEstimatesRevealed
+                            showValue
                                 ? Text(
                                   '${vote.selectedValue}',
                                   style: const TextStyle(
