@@ -204,7 +204,67 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
     UserVote(name: 'Alice', selectedValue: 0),
     UserVote(name: 'Bob', selectedValue: 0),
   ];
+  List<UserVote> availableUsers = [
+    UserVote(name: 'Sarah', selectedValue: 0),
+    UserVote(name: 'Mike', selectedValue: 0),
+    UserVote(name: 'Emma', selectedValue: 0),
+    UserVote(name: 'David', selectedValue: 0),
+    UserVote(name: 'Lisa', selectedValue: 0),
+  ];
   bool _areEstimatesRevealed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.isAdmin && widget.currentUser != null) {
+      // Add current user to the votes list if not already present
+      if (!userVotes.any((vote) => vote.name == widget.currentUser)) {
+        userVotes.add(UserVote(name: widget.currentUser!, selectedValue: 0));
+      }
+    }
+    // Remove users that are already in the current list
+    availableUsers.removeWhere(
+      (user) => userVotes.any((current) => current.name == user.name),
+    );
+  }
+
+  void _handleCardSelection(int value) {
+    if (!widget.isAdmin && widget.currentUser != null) {
+      setState(() {
+        final userIndex = userVotes.indexWhere(
+          (vote) => vote.name == widget.currentUser,
+        );
+        if (userIndex != -1) {
+          // Update existing user's vote
+          userVotes[userIndex] = UserVote(
+            name: widget.currentUser!,
+            selectedValue: value,
+          );
+        } else {
+          // Add new user vote
+          userVotes.add(
+            UserVote(name: widget.currentUser!, selectedValue: value),
+          );
+        }
+      });
+    }
+  }
+
+  void _removeUser(UserVote user) {
+    setState(() {
+      userVotes.removeWhere((vote) => vote.name == user.name);
+      if (!availableUsers.any((u) => u.name == user.name)) {
+        availableUsers.add(UserVote(name: user.name, selectedValue: 0));
+      }
+    });
+  }
+
+  void _addUser(UserVote user) {
+    setState(() {
+      userVotes.add(user);
+      availableUsers.removeWhere((u) => u.name == user.name);
+    });
+  }
 
   Future<void> _launchTicketUrl() async {
     final Uri url = Uri.parse('https://www.google.com');
@@ -236,134 +296,119 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    if (!widget.isAdmin && widget.currentUser != null) {
-      // Add current user to the votes list if not already present
-      if (!userVotes.any((vote) => vote.name == widget.currentUser)) {
-        userVotes.add(UserVote(name: widget.currentUser!, selectedValue: 0));
-      }
-    }
-  }
-
-  void _handleCardSelection(int value) {
-    if (!widget.isAdmin && widget.currentUser != null) {
-      setState(() {
-        final userIndex = userVotes.indexWhere(
-          (vote) => vote.name == widget.currentUser,
-        );
-        if (userIndex != -1) {
-          // Update existing user's vote
-          userVotes[userIndex] = UserVote(
-            name: widget.currentUser!,
-            selectedValue: value,
-          );
-        } else {
-          // Add new user vote
-          userVotes.add(
-            UserVote(name: widget.currentUser!, selectedValue: value),
-          );
-        }
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
+        leading:
+            widget.isAdmin
+                ? IconButton(
+                  icon: const Icon(Icons.settings, color: Colors.white),
+                  onPressed: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder:
+                            (context) => UserManagementScreen(
+                              currentUsers: userVotes,
+                              availableUsers: availableUsers,
+                              onAddUser: _addUser,
+                            ),
+                      ),
+                    );
+                  },
+                )
+                : null,
         title: Text(
           widget.isAdmin ? 'Scrum Poker (Admin)' : 'Scrum Poker',
           style: const TextStyle(color: Colors.white),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: InkWell(
-                onTap: _launchTicketUrl,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green, width: 1),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.link, size: 16, color: Colors.green),
-                      SizedBox(width: 8),
-                      Text(
-                        'CDL-19834',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: InkWell(
+                  onTap: _launchTicketUrl,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green, width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.link, size: 16, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text(
+                          'CDL-19834',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 150,
-              child: Center(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Calculate card width based on available width
-                    final cardWidth =
-                        (constraints.maxWidth - (cardValues.length + 1) * 8) /
-                        cardValues.length;
-                    final cardHeight = cardWidth * 1.5; // maintain aspect ratio
-
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(
-                        cardValues.length,
-                        (index) => InkWell(
-                          onTap: () {
-                            _handleCardSelection(cardValues[index]);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Selected card: ${cardValues[index]}',
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 150,
+                child: Center(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final cardWidth =
+                          (constraints.maxWidth - (cardValues.length + 1) * 8) /
+                          cardValues.length;
+                      final cardHeight = cardWidth * 1.5;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(
+                          cardValues.length,
+                          (index) => InkWell(
+                            onTap: () {
+                              _handleCardSelection(cardValues[index]);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Selected card: ${cardValues[index]}',
+                                  ),
+                                  duration: const Duration(seconds: 1),
                                 ),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          },
-                          child: Card(
-                            elevation: 4,
-                            child: Container(
-                              width: cardWidth,
-                              height: cardHeight,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Colors.blue,
-                                  width: 2,
+                              );
+                            },
+                            child: Card(
+                              elevation: 4,
+                              child: Container(
+                                width: cardWidth,
+                                height: cardHeight,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.blue,
+                                    width: 2,
+                                  ),
                                 ),
-                              ),
-                              child: Center(
-                                child: FittedBox(
-                                  fit: BoxFit.contain,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Text(
-                                      '${cardValues[index]}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
+                                child: Center(
+                                  child: FittedBox(
+                                    fit: BoxFit.contain,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(
+                                        '${cardValues[index]}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -372,51 +417,51 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            if (widget.isAdmin) ...[
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _areEstimatesRevealed = !_areEstimatesRevealed;
-                    });
-                  },
-                  icon: Icon(
-                    _areEstimatesRevealed
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                    color: Colors.white,
-                  ),
-                  label: Text(
-                    _areEstimatesRevealed
-                        ? 'Hide Estimates'
-                        : 'Reveal Estimates',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
+                      );
+                    },
                   ),
                 ),
               ),
               const SizedBox(height: 32),
-            ],
-            const Text(
-              'User Votes:',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
+              if (widget.isAdmin) ...[
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _areEstimatesRevealed = !_areEstimatesRevealed;
+                      });
+                    },
+                    icon: Icon(
+                      _areEstimatesRevealed
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      _areEstimatesRevealed
+                          ? 'Hide Estimates'
+                          : 'Reveal Estimates',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+              const Text(
+                'User Votes:',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
                 itemCount: userVotes.length,
                 itemBuilder: (context, index) {
                   final vote = userVotes[index];
@@ -426,45 +471,82 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
                           : vote.name == widget.currentUser;
                   final bool hasVoted = vote.selectedValue > 0;
 
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: hasVoted ? Colors.blue : Colors.red,
-                        child: const Icon(Icons.person, color: Colors.white),
-                      ),
-                      title: Text(vote.name),
-                      trailing: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: 40,
-                        height: 40,
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: hasVoted ? Colors.blue : Colors.red,
-                          borderRadius: BorderRadius.circular(4),
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Card(
+                          margin: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  hasVoted ? Colors.blue : Colors.red,
+                              child: const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                              ),
+                            ),
+                            title: Text(vote.name),
+                            trailing: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              width: 40,
+                              height: 40,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: hasVoted ? Colors.blue : Colors.red,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child:
+                                  showValue
+                                      ? Text(
+                                        '${vote.selectedValue}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      )
+                                      : const Icon(
+                                        Icons.question_mark,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                            ),
+                          ),
                         ),
-                        child:
-                            showValue
-                                ? Text(
-                                  '${vote.selectedValue}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                        if (widget.isAdmin)
+                          Positioned(
+                            top: -8,
+                            right: -8,
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () => _removeUser(vote),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue,
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  textAlign: TextAlign.center,
-                                )
-                                : const Icon(
-                                  Icons.question_mark,
-                                  color: Colors.white,
-                                  size: 20,
+                                  child: const Icon(
+                                    Icons.remove,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                 ),
-                      ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   );
                 },
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -476,4 +558,89 @@ class UserVote {
   final int selectedValue;
 
   UserVote({required this.name, required this.selectedValue});
+}
+
+class UserManagementScreen extends StatefulWidget {
+  final List<UserVote> currentUsers;
+  final List<UserVote> availableUsers;
+  final Function(UserVote) onAddUser;
+
+  const UserManagementScreen({
+    super.key,
+    required this.currentUsers,
+    required this.availableUsers,
+    required this.onAddUser,
+  });
+
+  @override
+  State<UserManagementScreen> createState() => _UserManagementScreenState();
+}
+
+class _UserManagementScreenState extends State<UserManagementScreen> {
+  List<UserVote> _localAvailableUsers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _localAvailableUsers = List.from(widget.availableUsers);
+  }
+
+  void _handleAddUser(UserVote user) {
+    widget.onAddUser(user);
+    setState(() {
+      _localAvailableUsers.removeWhere((u) => u.name == user.name);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: const Text(
+          'User Management',
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Available Users',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _localAvailableUsers.length,
+                itemBuilder: (context, index) {
+                  final user = _localAvailableUsers[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.person, color: Colors.white),
+                      ),
+                      title: Text(user.name),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.add_circle),
+                        color: Colors.blue,
+                        onPressed: () => _handleAddUser(user),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
