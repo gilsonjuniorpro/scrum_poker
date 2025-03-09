@@ -12,6 +12,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Scrum Poker',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
@@ -322,6 +323,16 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
           widget.isAdmin ? 'Scrum Poker (Admin)' : 'Scrum Poker',
           style: const TextStyle(color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -367,47 +378,57 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
                 child: Center(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final cardWidth =
-                          (constraints.maxWidth - (cardValues.length + 1) * 8) /
-                          cardValues.length;
-                      final cardHeight = cardWidth * 1.5;
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(
-                          cardValues.length,
-                          (index) => InkWell(
-                            onTap: () {
-                              _handleCardSelection(cardValues[index]);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Selected card: ${cardValues[index]}',
+                      final spacing = 8.0;
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      final isMobile = screenWidth < 600;
+
+                      if (isMobile) {
+                        // For mobile: calculate card width based on screen width
+                        final totalSpacing = (cardValues.length + 1) * spacing;
+                        final availableWidth =
+                            constraints.maxWidth - totalSpacing;
+                        final cardWidth = availableWidth / cardValues.length;
+                        final cardHeight = cardWidth * 1.4; // Maintain ratio
+
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: List.generate(
+                            cardValues.length,
+                            (index) => InkWell(
+                              onTap: () {
+                                _handleCardSelection(cardValues[index]);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Selected card: ${cardValues[index]}',
+                                    ),
+                                    duration: const Duration(seconds: 1),
                                   ),
-                                  duration: const Duration(seconds: 1),
-                                ),
-                              );
-                            },
-                            child: Card(
-                              elevation: 4,
-                              child: Container(
-                                width: cardWidth,
-                                height: cardHeight,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.blue,
-                                    width: 2,
+                                );
+                              },
+                              child: Card(
+                                elevation: 4,
+                                child: Container(
+                                  width: cardWidth,
+                                  height: cardHeight,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.blue,
+                                      width: 2,
+                                    ),
                                   ),
-                                ),
-                                child: Center(
-                                  child: FittedBox(
-                                    fit: BoxFit.contain,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Text(
-                                        '${cardValues[index]}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
+                                  child: Center(
+                                    child: FittedBox(
+                                      fit: BoxFit.contain,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Text(
+                                          '${cardValues[index]}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 20,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -416,8 +437,70 @@ class _ScrumPokerPageState extends State<ScrumPokerPage> {
                               ),
                             ),
                           ),
-                        ),
-                      );
+                        );
+                      } else {
+                        // Desktop/Web version with horizontal scroll
+                        final maxHeight = constraints.maxHeight;
+                        final cardHeight = maxHeight * 0.9;
+                        final cardWidth = cardHeight / 1.4;
+
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(
+                              cardValues.length,
+                              (index) => Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: spacing / 2,
+                                ),
+                                child: InkWell(
+                                  onTap: () {
+                                    _handleCardSelection(cardValues[index]);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Selected card: ${cardValues[index]}',
+                                        ),
+                                        duration: const Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  child: Card(
+                                    elevation: 4,
+                                    child: Container(
+                                      width: cardWidth,
+                                      height: cardHeight,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.blue,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: FittedBox(
+                                          fit: BoxFit.contain,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: Text(
+                                              '${cardValues[index]}',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 24,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
                     },
                   ),
                 ),
@@ -578,6 +661,7 @@ class UserManagementScreen extends StatefulWidget {
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
   List<UserVote> _localAvailableUsers = [];
+  final TextEditingController _newUserController = TextEditingController();
 
   @override
   void initState() {
@@ -585,11 +669,67 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     _localAvailableUsers = List.from(widget.availableUsers);
   }
 
+  @override
+  void dispose() {
+    _newUserController.dispose();
+    super.dispose();
+  }
+
   void _handleAddUser(UserVote user) {
     widget.onAddUser(user);
     setState(() {
       _localAvailableUsers.removeWhere((u) => u.name == user.name);
     });
+  }
+
+  void _addNewUser() {
+    final name = _newUserController.text.trim();
+    if (name.isNotEmpty) {
+      // Case-insensitive check for duplicates
+      final nameLower = name.toLowerCase();
+      if (widget.currentUsers.any(
+            (user) => user.name.toLowerCase() == nameLower,
+          ) ||
+          _localAvailableUsers.any(
+            (user) => user.name.toLowerCase() == nameLower,
+          )) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('User "$name" already exists in the system'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
+        );
+      } else {
+        setState(() {
+          _localAvailableUsers.add(UserVote(name: name, selectedValue: 0));
+          _newUserController.clear();
+        });
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('User "$name" added successfully'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a user name'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -611,6 +751,38 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newUserController,
+                    decoration: const InputDecoration(
+                      labelText: 'New User Name',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    onSubmitted: (_) => _addNewUser(),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton(
+                  onPressed: _addNewUser,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: const Text('Add User'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
             const Text(
               'Available Users',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
